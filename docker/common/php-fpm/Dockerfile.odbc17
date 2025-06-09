@@ -34,19 +34,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker-php-ext-enable redis \
     && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# --- Bloco de Instalação do SQL Server Driver (adaptado para ODBC 18) ---
+# --- Bloco de Instalação do SQL Server Driver (adaptado do Debian 11) ---
 # Adiciona o repositório da Microsoft para Debian 12 (Bookworm)
-# NOTA: Mantido o repositório bookworm, apenas atualizando para ODBC 18
+# NOTA: Alterado de bullseye (Debian 11) para bookworm (Debian 12)
 RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
 RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
 
-# Instala o driver ODBC 18 e as extensões PHP para SQL Server
-# NOTA: Atualizado para ODBC 18, mantendo a mesma estrutura de configuração
+# Instala o driver ODBC e as extensões PHP para SQL Server
+# NOTA: Mantida a mesma configuração que funcionou no Debian 11, apenas adaptada para o Debian 12
 RUN apt-get update \
     && apt-get remove -y unixodbc-common libodbc2 libodbcinst2 || true \
-    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql17 unixodbc-dev \
     && mkdir -p /etc/odbc \
-    && printf "[ODBC Driver 18 for SQL Server]\nDescription=Microsoft ODBC Driver 18 for SQL Server\nDriver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.5.so.1.1\nUsageCount=1\nSSLProtocol = TLSv1.2\nTrustServerCertificate = yes\nEncrypt = yes\n" > /etc/odbcinst.ini \
+    && printf "[ODBC Driver 17 for SQL Server]\nDescription=Microsoft ODBC Driver 17 for SQL Server\nDriver=/opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.10.so.6.1\nUsageCount=1\nSSLProtocol = TLSv1.2\nTrustServerCertificate = yes\nEncrypt = yes\n" > /etc/odbcinst.ini \
     && chmod 644 /etc/odbcinst.ini \
     && chown root:root /etc/odbcinst.ini \
     && chmod 755 /etc/odbc \
@@ -97,15 +97,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # FIM: Dependências do SQL Server para produção
     && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# --- Bloco de Instalação do SQL Server Driver para produção (adaptado para ODBC 18) ---
-# NOTA: Atualizado para ODBC 18, mantendo a mesma estrutura de configuração
+# --- Bloco de Instalação do SQL Server Driver para produção (adaptado do Debian 11) ---
+# NOTA: Mantida a mesma configuração que funcionou no Debian 11, apenas adaptada para o Debian 12
 RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
 RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
 RUN apt-get update \
     && apt-get remove -y unixodbc-common libodbc2 libodbcinst2 || true \
-    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql17 \
     && mkdir -p /etc/odbc \
-    && printf "[ODBC Driver 18 for SQL Server]\nDescription=Microsoft ODBC Driver 18 for SQL Server\nDriver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.5.so.1.1\nUsageCount=1\nSSLProtocol = TLSv1.2\nTrustServerCertificate = yes\nEncrypt = yes\n" > /etc/odbcinst.ini \
+    && printf "[ODBC Driver 17 for SQL Server]\nDescription=Microsoft ODBC Driver 17 for SQL Server\nDriver=/opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.10.so.6.1\nUsageCount=1\nSSLProtocol = TLSv1.2\nTrustServerCertificate = yes\nEncrypt = yes\n" > /etc/odbcinst.ini \
     && chmod 644 /etc/odbcinst.ini \
     && chown root:root /etc/odbcinst.ini \
     && chmod 755 /etc/odbc \
