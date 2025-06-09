@@ -1,5 +1,8 @@
 # Laravel Docker Examples Project
 
+## Version
+- 1.0.0 MS SQL 2008 R2 support via ODBC 17 and ODBC 18
+
 ## Table of Contents
 
 - [Overview](#overview)
