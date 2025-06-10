@@ -1,4 +1,4 @@
-# Stage 1: Build environment and Composer dependencies
+gi# Stage 1: Build environment and Composer dependencies
 FROM php:8.4-fpm AS builder
 
 # Configuração do timezone
