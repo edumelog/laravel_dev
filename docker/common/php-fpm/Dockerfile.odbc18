@@ -1,3 +1,7 @@
+########################################################
+#           ODBC 18 - PHP 8.4 - FPM - ODBC 18          #
+########################################################
+
 # Stage 1: Build environment and Composer dependencies
 FROM php:8.4-fpm AS builder
 

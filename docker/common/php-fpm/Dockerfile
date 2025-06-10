@@ -1,3 +1,7 @@
+########################################################
+#           FreeTDS - PHP 8.4 - FPM - ODBC 17          #
+########################################################
+
 # Stage 1: Build environment and Composer dependencies
 FROM php:8.4-fpm AS builder
 
