@@ -1,12 +1,9 @@
 ########################################################
-#           FreeTDS - PHP 8.4 - FPM - ODBC 17          #
+#           ODBC 17 - PHP 8.4 - FPM - ODBC 17          #
 ########################################################
 
 # Stage 1: Build environment and Composer dependencies
 FROM php:8.4-fpm AS builder
-
-# Configuração do timezone
-ENV TZ=America/Sao_Paulo
 
 # Install system dependencies and PHP extensions required for Laravel + MySQL/PostgreSQL support
 # Some dependencies are required for PHP extensions only in the build stage
@@ -21,14 +18,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev \
     libicu-dev \
     libzip-dev \
-    # Dependências para FreeTDS
-    freetds-dev \
-    freetds-bin \
-    libsybdb5 \
-    libedit-dev \
-    zlib1g-dev \
-    git \
-    nano \
     # INÍCIO: Dependências do sistema para SQL Server (adaptadas do Debian 11)
     gnupg2 \
     unixodbc-dev \
@@ -45,27 +34,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # INÍCIO: Extensões PHP para SQL Server (adaptadas do Debian 11)
     # sqlsrv e pdo_sqlsrv serão instaladas via PECL após a instalação do driver ODBC
     # FIM: Extensões PHP para SQL Server
-    pdo_dblib \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Configuração otimizada do FreeTDS para SQL Server
-RUN mkdir -p /etc/freetds && echo "\
-[global] \n\
-    tds version = 7.1 \n\
-    client charset = UTF-8 \n\
-    text size = 64512 \n\
-    dump file = /tmp/freetds.log \n\
-    debug flags = 0x4fff \n\
-    port = 1433 \n\
-    instance = default \n\
-\n\
-[sqlserver] \n\
-    host = 10.1.5.21 \n\
-    port = 1433 \n\
-    tds version = 7.1 \n\
-" > /etc/freetds/freetds.conf
+# --- Bloco de Instalação do SQL Server Driver (adaptado do Debian 11) ---
+# Adiciona o repositório da Microsoft para Debian 12 (Bookworm)
+# NOTA: Alterado de bullseye (Debian 11) para bookworm (Debian 12)
+RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
+
+# Instala o driver ODBC e as extensões PHP para SQL Server
+# NOTA: Mantida a mesma configuração que funcionou no Debian 11, apenas adaptada para o Debian 12
+RUN apt-get update \
+    && apt-get remove -y unixodbc-common libodbc2 libodbcinst2 || true \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql17 unixodbc-dev \
+    && mkdir -p /etc/odbc \
+    && printf "[ODBC Driver 17 for SQL Server]\nDescription=Microsoft ODBC Driver 17 for SQL Server\nDriver=/opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.10.so.6.1\nUsageCount=1\nSSLProtocol = TLSv1.2\nTrustServerCertificate = yes\nEncrypt = yes\n" > /etc/odbcinst.ini \
+    && chmod 644 /etc/odbcinst.ini \
+    && chown root:root /etc/odbcinst.ini \
+    && chmod 755 /etc/odbc \
+    && echo "export ODBCSYSINI=/etc" >> /etc/profile \
+    && echo "export ODBCINST=/etc/odbcinst.ini" >> /etc/profile \
+    && pecl install sqlsrv pdo_sqlsrv \
+    && docker-php-ext-enable sqlsrv pdo_sqlsrv \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory inside the container
 WORKDIR /var/www
@@ -95,9 +88,6 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 # Stage 2: Production environment
 FROM php:8.4-fpm AS production
 
-# Configuração do timezone
-ENV TZ=America/Sao_Paulo
-
 # Install only runtime libraries needed in production
 # libfcgi-bin and procps are required for the php-fpm-healthcheck script
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -106,20 +96,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libzip-dev \
     libfcgi-bin \
     procps \
-    # Dependências para FreeTDS
-    freetds-dev \
-    freetds-bin \
-    libsybdb5 \
-    libedit-dev \
-    zlib1g-dev \
     # INÍCIO: Dependências do SQL Server para produção (adaptadas do Debian 11)
     gnupg2 \
     # FIM: Dependências do SQL Server para produção
-    && docker-php-ext-install pdo_dblib \
     && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Copiar configuração do FreeTDS
-COPY --from=builder /etc/freetds/freetds.conf /etc/freetds/freetds.conf
+# --- Bloco de Instalação do SQL Server Driver para produção (adaptado do Debian 11) ---
+# NOTA: Mantida a mesma configuração que funcionou no Debian 11, apenas adaptada para o Debian 12
+RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
+RUN apt-get update \
+    && apt-get remove -y unixodbc-common libodbc2 libodbcinst2 || true \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql17 \
+    && mkdir -p /etc/odbc \
+    && printf "[ODBC Driver 17 for SQL Server]\nDescription=Microsoft ODBC Driver 17 for SQL Server\nDriver=/opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.10.so.6.1\nUsageCount=1\nSSLProtocol = TLSv1.2\nTrustServerCertificate = yes\nEncrypt = yes\n" > /etc/odbcinst.ini \
+    && chmod 644 /etc/odbcinst.ini \
+    && chown root:root /etc/odbcinst.ini \
+    && chmod 755 /etc/odbc \
+    && echo "export ODBCSYSINI=/etc" >> /etc/profile \
+    && echo "export ODBCINST=/etc/odbcinst.ini" >> /etc/profile \
+    && rm -rf /var/lib/apt/lists/*
 
 # Download and install php-fpm health check script
 RUN curl -o /usr/local/bin/php-fpm-healthcheck \
