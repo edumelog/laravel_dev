@@ -1,7 +1,7 @@
 ########################################################
 #        PHP 8.4 - FPM para Laravel - Com SQLSRV       #
 #  Inclui: PHP-FPM, Redis, PostgreSQL, MySQL, Xdebug   #
-#  Suporte ao SQL Server via ODBC 17 + sqlsrv + FreeTDS#
+#  Suporte ao SQL Server via ODBC 17 + sqlsrv          #
 #  Ferramentas extra: nano, ping, telnet               #
 ########################################################
 
@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y gnupg2 curl \
     && curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
     && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
 
-# Instala dependências do sistema, incluindo FreeTDS e extensões PHP
+# Instala dependências do sistema e extensões PHP
 RUN apt-get update && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
     msodbcsql17 \
     unixodbc-dev \
@@ -28,12 +28,6 @@ RUN apt-get update && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev \
     libicu-dev \
     libzip-dev \
-    freetds-dev \
-    freetds-bin \
-    libsybdb5 \
-    libedit-dev \
-    zlib1g-dev \
-    git \
     && docker-php-ext-install -j$(nproc) \
     pdo_mysql \
     pdo_pgsql \
@@ -43,26 +37,9 @@ RUN apt-get update && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
     zip \
     bcmath \
     soap \
-    pdo_dblib \
     && pecl install redis sqlsrv pdo_sqlsrv \
     && docker-php-ext-enable redis sqlsrv pdo_sqlsrv \
     && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Configuração otimizada do FreeTDS
-RUN mkdir -p /etc/freetds && echo "\
-[global] \n\
-    tds version = 7.1 \n\
-    client charset = UTF-8 \n\
-    text size = 64512 \n\
-    dump file = /tmp/freetds.log \n\
-    debug flags = 0x4fff \n\
-    port = 1433 \n\
-    instance = default \n\
-\n\
-[sqlserver] \n\
-    host = 10.1.5.21 \n\
-    port = 1433 \n\
-    tds version = 7.1 \n" > /etc/freetds/freetds.conf
 
 # Força OpenSSL a aceitar algoritmos legados (SECLEVEL=0)
 RUN echo 'openssl_conf = openssl_init\n\n[openssl_init]\nssl_conf = ssl_sect\n\n[ssl_sect]\nsystem_default = system_default_sect\n\n[system_default_sect]\nMinProtocol = TLSv1\nCipherString = DEFAULT:@SECLEVEL=0' > /etc/ssl/openssl_legacy.cnf \
@@ -98,16 +75,7 @@ RUN apt-get update && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
     libzip-dev \
     libfcgi-bin \
     procps \
-    freetds-dev \
-    freetds-bin \
-    libsybdb5 \
-    libedit-dev \
-    zlib1g-dev \
-    && docker-php-ext-install pdo_dblib \
     && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Copiar configuração do FreeTDS
-COPY --from=builder /etc/freetds/freetds.conf /etc/freetds/freetds.conf
 
 # Força OpenSSL a aceitar algoritmos legados (SECLEVEL=0)
 RUN echo 'openssl_conf = openssl_init\n\n[openssl_init]\nssl_conf = ssl_sect\n\n[ssl_sect]\nsystem_default = system_default_sect\n\n[system_default_sect]\nMinProtocol = TLSv1\nCipherString = DEFAULT:@SECLEVEL=0' > /etc/ssl/openssl_legacy.cnf \
@@ -153,6 +121,7 @@ USER www-data
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 EXPOSE 9000
 CMD ["php-fpm"]
+
 
 # Stage 3: Imagem para desenvolvimento
 FROM production AS development

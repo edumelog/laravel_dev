@@ -2,12 +2,17 @@
 
 // Configurações do banco de dados
 $config = [
-    'host' => '192.168.4.73',
-    'port' => '1433',
-    'database' => 'dcmdigital',
-    'username' => 'dti-user',
+    // 'host' => '192.168.4.73',    //dev cmrj
+    // 'host' => '10.41.72.12', //dev home  
+    'host' => '10.100.2.22', //hmg cmrj
+    'port' => '1444',
+    // 'database' => 'dcmdigital',
+    // 'database' => 'teste-local',
+    'database' => 'dcmdigital_v3',
+    // 'username' => 'dti-user',
+    'username' => 'dcm_digital_user',
     'password' => '12345',
-    'encrypt' => true,
+    'encrypt' => false,
     'trust_server_certificate' => true
 ];
 
@@ -39,9 +44,15 @@ function testSqlsrvNative($config) {
             "Encrypt" => $config['encrypt'],
             "TrustServerCertificate" => $config['trust_server_certificate']
         ];
-        
-        $conn = sqlsrv_connect($config['host'], $connectionInfo);
-        
+
+        // Inclui a porta no parâmetro Server
+        $server = $config['host'];
+        if (!empty($config['port'])) {
+            $server .= ',' . $config['port'];
+        }
+
+        $conn = sqlsrv_connect($server, $connectionInfo);
+
         if ($conn) {
             echo "[SUCESSO] Conexão estabelecida com sqlsrv nativo\n";
             $serverInfo = sqlsrv_server_info($conn);
